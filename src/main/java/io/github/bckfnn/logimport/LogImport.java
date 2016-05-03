@@ -79,15 +79,17 @@ public class LogImport {
                 cb.fail(e);
             });
             file.handler(RecordParser.newDelimited("\n", b -> {
+                /*
                 if (!paused.get()) {
                     file.pause();
                     paused.set(true);
                     System.out.println("pause");
-                }                    
+                } 
+                */                   
                 try {
                     BsonDoc doc = parseLine(b.toString());
                     //System.out.println(doc);
-                    db.collection("logs").insert(doc, WriteConcern.ACKNOWLEDGED, cb.handler(wr -> {
+                    db.collection("logs").insert(doc, WriteConcern.NONE, cb.handler(wr -> {
                         //System.out.println(wr);
                         if (wr.getOk() != 0) {
                             if (paused.get()) {
