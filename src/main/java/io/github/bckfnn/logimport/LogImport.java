@@ -2,6 +2,7 @@ package io.github.bckfnn.logimport;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,7 +24,7 @@ public class LogImport {
     Vertx vertx;
     SimpleDateFormat df = new SimpleDateFormat("dd/MMM/YY:HH:mm:ss Z", Locale.ENGLISH);
     Client client;
-    
+
     public static void main(String[] args) {
         LogImport li = new LogImport();
         li.run((c, e) -> {
@@ -44,26 +45,28 @@ public class LogImport {
     public void run(Callback<Void> cb) {
         client.open(cb.handler(v -> {
             Database db = client.database("logimport");
-            
+
             FileSystem fs = vertx.fileSystem();
             fs.readDir("d:/vertx/apache-logs", ar -> {
-               if (ar.failed()) {
-                   throw new RuntimeException(ar.cause());
-               }
+                if (ar.failed()) {
+                    throw new RuntimeException(ar.cause());
+                }
 
-               forEach(ar.result(), (s, h) -> {
-                   if (s.contains("logfile.") && s.endsWith(".log")) {
-                       load(s, db, h);
-                   } else {
-                       h.ok();
-                   }
-               }, cb);
+                forEach(ar.result(), (s, h) -> {
+                    if (s.contains("logfile.") && s.endsWith(".log")) {
+                        load(s, db, h);
+                    } else {
+                        h.ok();
+                    }
+                }, cb);
             });
         }));
-       
+
     }
 
     private void load(String path, Database db, Callback<Void> cb) {
+        List<BsonDoc> docs = new ArrayList<>();
+
         System.out.println(path);
         AtomicBoolean paused = new AtomicBoolean(false);
         vertx.fileSystem().open(path, new OpenOptions().setRead(true).setWrite(false), cb.handler(file -> {
@@ -85,23 +88,30 @@ public class LogImport {
                     paused.set(true);
                     System.out.println("pause");
                 } 
-                */                   
+                 */                   
                 try {
                     BsonDoc doc = parseLine(b.toString());
-                    //System.out.println(doc);
-                    db.collection("logs").insert(doc, WriteConcern.NONE, cb.handler(wr -> {
-                        //System.out.println(wr);
+                    docs.add(doc);
+
+                    if (docs.size() > 2000) {
+                        //System.out.println(doc);
+                        db.collection("logs"). insert(docs, WriteConcern.NONE, x -> {
+                            //System.out.println(wr);
+                            /*
                         if (wr.getOk() != 0) {
                             if (paused.get()) {
                                 System.out.println("resume");
                                 file.resume();    
                                 paused.set(false);
                             }
-                            
+
                         } else {
                             System.err.println(wr);
                         }
-                    }));
+                             */
+                        });
+                        docs.clear();
+                    }
                 } catch (Exception e1) {
                     cb.fail(e1);
                     //file.pause();
@@ -132,7 +142,7 @@ public class LogImport {
         h.call(null, null);
 
     }
-    
+
     BsonDoc parseLine(String line) throws ParseException  {
         Pos pos = new Pos(line);
         String ip = pos.tokenTo(' ');
@@ -153,12 +163,12 @@ public class LogImport {
             proto = pos.tokenTo('"');
             pos.tokenTo(' ');
         }
-        
+
         String code = pos.tokenTo(' ');
         String size = pos.tokenTo(' ');
         @SuppressWarnings("unused")
         String zzz = pos.tokenTo(' ');
-        
+
         BsonDoc o = new BsonDocMap();
         o.put("ip", ip);
         o.put("user", user);
@@ -174,16 +184,16 @@ public class LogImport {
         }
         return o;
     }
-    
-    
+
+
     static class Pos {
         int pos = 0;
         String line;
-        
+
         Pos(String line) {
             this.line = line;
         }
-        
+
         String tokenTo(char delim) {
             int idx = line.indexOf(delim, pos);
             if (idx < 0) {
@@ -193,7 +203,7 @@ public class LogImport {
             pos = idx + 1;
             return r;
         }
-        
+
         void advance() {
             pos++;
         }
