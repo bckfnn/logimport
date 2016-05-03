@@ -178,7 +178,9 @@ public class LogImport {
         if (proto != null) {
             o.put("proto", proto);
         }
-        o.put("code", code);
+        if (code != null) {
+            o.put("code", code);
+        }
         if (size != null && !size.equals("-")) {
             o.put("size", Long.parseLong(size));
         }
