@@ -20,9 +20,18 @@ import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.parsetools.RecordParser;
 
+/**
+ *
+    db.getCollection('logs').createIndex({"user":1})
+    db.getCollection('logs').createIndex({"code":1})
+    db.getCollection('logs').createIndex({"size":1})
+    db.getCollection('logs').createIndex({"ip":1})
+    db.getCollection('logs').createIndex({"date":1})
+
+ */
 public class LogImport {
     Vertx vertx;
-    SimpleDateFormat df = new SimpleDateFormat("dd/MMM/YY:HH:mm:ss Z", Locale.ENGLISH);
+    SimpleDateFormat df = new SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z", Locale.ENGLISH);
     Client client;
 
     public static void main(String[] args) {
@@ -47,7 +56,7 @@ public class LogImport {
             Database db = client.database("logimport");
 
             FileSystem fs = vertx.fileSystem();
-            fs.readDir("d:/vertx/apache-logs", ar -> {
+            fs.readDir("c:/vertx/apache-logs", ar -> {
                 if (ar.failed()) {
                     throw new RuntimeException(ar.cause());
                 }
@@ -87,8 +96,8 @@ public class LogImport {
                     file.pause();
                     paused.set(true);
                     System.out.println("pause");
-                } 
-                 */                   
+                }
+                 */
                 try {
                     BsonDoc doc = parseLine(b.toString());
                     docs.add(doc);
@@ -101,7 +110,7 @@ public class LogImport {
                         if (wr.getOk() != 0) {
                             if (paused.get()) {
                                 System.out.println("resume");
-                                file.resume();    
+                                file.resume();
                                 paused.set(false);
                             }
 
@@ -113,6 +122,7 @@ public class LogImport {
                         docs.clear();
                     }
                 } catch (Exception e1) {
+                    System.out.println(b);
                     cb.fail(e1);
                     //file.pause();
                 }
@@ -156,7 +166,7 @@ public class LogImport {
         String proto;
         String url;
         String cmd = pos.tokenTo(' ');
-        if (cmd != null && cmd.startsWith("-")) {
+        if (cmd != null && cmd.equals("-")) {
             cmd = proto = url = "-";
         } else {
             url = pos.tokenTo(' ');
